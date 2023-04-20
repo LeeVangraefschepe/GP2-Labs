@@ -55,6 +55,7 @@ struct GameContext
 	HWND windowHandle{};
 	std::wstring contentRoot{ L"./Resources/" };
 	float inputUpdateFrequency{ 0.016f };
+	bool fullScreen{false};
 
 	D3D11Context d3dContext{};
 	OverlordGame* pGame{};

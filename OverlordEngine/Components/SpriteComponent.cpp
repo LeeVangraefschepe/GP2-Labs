@@ -18,6 +18,19 @@ void SpriteComponent::SetTexture(const std::wstring& spriteAsset)
 	m_pTexture = ContentManager::Load<TextureData>(m_SpriteAsset);
 }
 
+void SpriteComponent::SetDimensions(float width, float height)
+{
+	if (!m_pTexture)
+	{
+		m_pTexture = ContentManager::Load<TextureData>(m_SpriteAsset);
+	}
+	const auto originalWidth = m_pTexture->GetDimension().x;
+	const auto originalHeight = m_pTexture->GetDimension().y;
+	const auto widthScale = width / originalWidth;
+	const auto heightScale = height / originalHeight;
+	GetTransform()->Scale(XMFLOAT3{ widthScale,heightScale,1.f});
+}
+
 void SpriteComponent::Draw(const SceneContext& sceneContext)
 {
 	if (!m_pTexture)
