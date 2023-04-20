@@ -63,8 +63,46 @@ void CameraComponent::SetActive(bool active)
 	pScene->SetActiveCamera(active?this:nullptr); //Switch to default camera if active==false
 }
 
-GameObject* CameraComponent::Pick(CollisionGroup /*ignoreGroups*/) const
+GameObject* CameraComponent::Pick(CollisionGroup ignoreGroups) const
 {
-	TODO_W7(L"Implement Picking Logic")
+	const auto& sceneContext = GetGameObject()->GetScene()->GetSceneContext();
+
+	const float halfWidth{ sceneContext.windowWidth / 2.0f };
+	const float halfHeight{ sceneContext.windowHeight / 2.0f };
+	const POINT& mousePos{ InputManager::GetMousePosition() };
+
+	//NDC space
+	const XMFLOAT2 ndcPosition
+	{
+		(static_cast<float>(mousePos.x) - halfWidth) / halfWidth,
+		(halfHeight - static_cast<float>(mousePos.y)) / halfHeight
+	};
+
+	const auto& viewProjInv{ XMLoadFloat4x4(&GetViewProjectionInverse()) };
+
+	//Create base ray direction
+	const XMVECTOR rayStart{ XMVector3TransformCoord(XMVECTOR{ ndcPosition.x, ndcPosition.y, 0.0f }, viewProjInv) };
+	const XMVECTOR rayEnd{ XMVector3TransformCoord(XMVECTOR{ ndcPosition.x, ndcPosition.y, 1.0f }, viewProjInv) };
+
+	//Convert to XMFLOAT3
+	XMFLOAT3 rayStartF{};
+	XMStoreFloat3(&rayStartF, rayStart);
+	XMFLOAT3 rayEndF{};
+	XMStoreFloat3(&rayEndF, rayEnd);
+
+	//Convert the PxVec3
+	const PxVec3 rayOrigin{ rayStartF.x, rayStartF.y, rayStartF.z };
+	const PxVec3 rayDirection{ rayEndF.x - rayOrigin.x, rayEndF.y - rayOrigin.y, rayEndF.z - rayOrigin.z };
+
+	//Filter for ignore groups
+	PxQueryFilterData filterData{};
+	filterData.data.word0 = ~static_cast<UINT>(ignoreGroups);
+
+	//Raycast
+	if (PxRaycastBuffer hit{}; GetGameObject()->GetScene()->GetPhysxProxy()->Raycast(rayOrigin, rayDirection.getNormalized(), PX_MAX_F32, hit, PxHitFlag::eDEFAULT, filterData))
+	{
+		return static_cast<BaseComponent*>(hit.block.actor->userData)->GetGameObject();
+	}
+
 	return nullptr;
 }
